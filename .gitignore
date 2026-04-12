@@ -1,0 +1,7 @@
+models/**
+videos/**
+.venv/**
+logs/**
+_deps/**
+.pytest_cache/**
+build/**

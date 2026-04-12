@@ -1,0 +1,2 @@
+/usr/bin/ar qc libjoltgym_core.a CMakeFiles/joltgym_core.dir/joltgym_core.cpp.o CMakeFiles/joltgym_core.dir/physics_world.cpp.o CMakeFiles/joltgym_core.dir/body_registry.cpp.o CMakeFiles/joltgym_core.dir/articulation.cpp.o CMakeFiles/joltgym_core.dir/motor_controller.cpp.o CMakeFiles/joltgym_core.dir/state_extractor.cpp.o CMakeFiles/joltgym_core.dir/collision_layers.cpp.o
+/usr/bin/ranlib libjoltgym_core.a

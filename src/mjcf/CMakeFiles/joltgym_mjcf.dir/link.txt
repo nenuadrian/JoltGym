@@ -1,0 +1,2 @@
+/usr/bin/ar qc libjoltgym_mjcf.a CMakeFiles/joltgym_mjcf.dir/mjcf_model.cpp.o CMakeFiles/joltgym_mjcf.dir/mjcf_defaults.cpp.o CMakeFiles/joltgym_mjcf.dir/mjcf_compiler.cpp.o CMakeFiles/joltgym_mjcf.dir/mjcf_parser.cpp.o CMakeFiles/joltgym_mjcf.dir/mjcf_to_jolt.cpp.o
+/usr/bin/ranlib libjoltgym_mjcf.a
