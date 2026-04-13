@@ -32,7 +32,7 @@ JPH::Quat MjcfToJolt::ComputeRotationFromTo(JPH::Vec3 from, JPH::Vec3 to) {
 }
 
 Articulation* MjcfToJolt::Build(const MjcfModel& model, PhysicsWorld& world,
-                                 JPH::Vec3 offset) {
+                                 JPH::Vec3 offset, bool create_floor) {
     m_model = &model;
     m_offset = offset;
     m_dynamic_bodies.clear();
@@ -42,9 +42,10 @@ Articulation* MjcfToJolt::Build(const MjcfModel& model, PhysicsWorld& world,
                                 model.option.gravity.y,
                                 model.option.gravity.z));
 
-    // Create floor from worldbody geoms
+    // Create floor from worldbody geoms (only once for multi-agent)
     auto& body_interface = world.GetBodyInterface();
     for (auto& geom : model.worldbody.geoms) {
+        if (!create_floor) break;
         if (geom.type == "plane") {
             JPH::BoxShapeSettings floor_shape(JPH::Vec3(100.0f, 100.0f, 0.5f));
             floor_shape.SetEmbedded();

@@ -5,6 +5,8 @@ pybind11_add_module(joltgym_native MODULE
     bind_state.cpp
     bind_env.cpp
     world_pool.cpp
+    multi_agent_env.cpp
+    bind_multi_agent.cpp
 )
 
 target_include_directories(joltgym_native PRIVATE

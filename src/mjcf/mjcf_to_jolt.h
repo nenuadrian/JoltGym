@@ -12,7 +12,8 @@ public:
     // Build a PhysicsWorld from an MjcfModel
     // Returns the articulation created for the main body
     Articulation* Build(const MjcfModel& model, PhysicsWorld& world,
-                        JPH::Vec3 offset = JPH::Vec3::sZero());
+                        JPH::Vec3 offset = JPH::Vec3::sZero(),
+                        bool create_floor = true);
 
 private:
     // Recursive body builder

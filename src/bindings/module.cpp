@@ -6,6 +6,7 @@ void bind_world(py::module_& m);
 void bind_renderer(py::module_& m);
 void bind_state(py::module_& m);
 void bind_env(py::module_& m);
+void bind_multi_agent(py::module_& m);
 
 PYBIND11_MODULE(joltgym_native, m) {
     m.doc() = "JoltGym native bindings — MuJoCo-compatible physics simulation for RL";
@@ -13,6 +14,7 @@ PYBIND11_MODULE(joltgym_native, m) {
     bind_world(m);
     bind_state(m);
     bind_env(m);
+    bind_multi_agent(m);
 
     #ifdef JOLTGYM_HAS_RENDERER
     bind_renderer(m);

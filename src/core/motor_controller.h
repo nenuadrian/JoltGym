@@ -44,6 +44,7 @@ private:
     float m_stiffness;
     float m_armature;
     float m_last_torque = 0.0f;
+    float m_pending_action = 0.0f;
 };
 
 } // namespace joltgym

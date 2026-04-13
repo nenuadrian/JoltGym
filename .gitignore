@@ -5,3 +5,4 @@ logs/**
 _deps/**
 .pytest_cache/**
 build/**
+**/__pycache__/**
