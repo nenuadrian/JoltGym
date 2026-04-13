@@ -1,0 +1,77 @@
+site_name: JoltGym
+site_description: MuJoCo-compatible physics simulation for RL, built on Jolt Physics with Vulkan rendering
+site_url: ""
+
+repo_url: https://github.com/joltgym/joltgym
+repo_name: joltgym/joltgym
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - tables
+  - attr_list
+  - md_in_html
+  - def_list
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+  - Python API:
+      - Environments: python/environments.md
+      - Vectorized Environments: python/vectorized.md
+      - API Reference: python/api-reference.md
+  - C++ Reference:
+      - Architecture: cpp/architecture.md
+      - Core Physics: cpp/core.md
+      - MJCF Parser: cpp/mjcf.md
+      - Renderer: cpp/renderer.md
+      - Python Bindings: cpp/bindings.md
+  - Demos & Examples:
+      - Overview: demos/index.md
+      - Training: demos/training.md
+      - Recording & Visualization: demos/recording.md
+  - Performance: performance.md

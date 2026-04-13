@@ -18,22 +18,32 @@ MotorController::MotorController(const std::string& name, JPH::Constraint* const
     , m_stiffness(stiffness)
     , m_armature(armature)
 {
-    // Configure the spring motor once at construction
+    // Configure motor based on stiffness mode
     if (m_type == JointType::Hinge) {
         auto* hinge = static_cast<JPH::HingeConstraint*>(m_constraint);
         auto& ms = hinge->GetMotorSettings();
 
+        // High torque limits so the spring/damper is never clipped
+        ms.mMaxTorqueLimit = 5000.0f;
+        ms.mMinTorqueLimit = -5000.0f;
+
         ms.mSpringSettings.mMode = JPH::ESpringMode::StiffnessAndDamping;
-        ms.mSpringSettings.mStiffness = m_stiffness;
-        ms.mSpringSettings.mDamping = m_damping;
 
-        // High torque limits so the spring is never clipped
-        ms.mMaxTorqueLimit = 1000.0f;
-        ms.mMinTorqueLimit = -1000.0f;
-
-        // Start in position mode targeting equilibrium (angle 0)
-        hinge->SetMotorState(JPH::EMotorState::Position);
-        hinge->SetTargetAngle(0.0f);
+        if (m_stiffness > 1e-6f) {
+            // Position motor with spring: tau = -stiffness*(pos-target) - damping*vel
+            ms.mSpringSettings.mStiffness = m_stiffness;
+            ms.mSpringSettings.mDamping = m_damping;
+            hinge->SetMotorState(JPH::EMotorState::Position);
+            hinge->SetTargetAngle(0.0f);
+        } else {
+            // Zero-stiffness joint: velocity motor for damping + actuation
+            // tau = -damping * (vel - target_vel)
+            // With target_vel = gear*action/damping → tau = -damping*vel + gear*action
+            ms.mSpringSettings.mStiffness = 0.0f;
+            ms.mSpringSettings.mDamping = std::max(m_damping, 0.1f); // Ensure some damping
+            hinge->SetMotorState(JPH::EMotorState::Velocity);
+            hinge->SetTargetAngularVelocity(0.0f);
+        }
     }
 }
 
@@ -42,15 +52,18 @@ void MotorController::SetAction(float normalized_action) {
 }
 
 void MotorController::ApplyPassiveForces(JPH::BodyInterface& body_interface) {
-    // Jolt's Position motor with spring applies:
-    //   tau = -stiffness * (pos - target) - damping * vel
-    //
-    // MuJoCo's joint forces:
+    // MuJoCo joint force model:
     //   tau = gear * action - stiffness * pos - damping * vel
     //
-    // Setting target = gear * action / stiffness gives:
+    // For position motor (stiffness > 0):
+    //   Set target = gear * action / stiffness:
     //   tau = -stiffness * (pos - gear*action/stiffness) - damping * vel
-    //       = -stiffness * pos + gear * action - damping * vel  ✓
+    //       = gear * action - stiffness * pos - damping * vel  ✓
+    //
+    // For velocity motor (stiffness = 0):
+    //   Set target_vel = gear * action / damping:
+    //   tau = -damping * (vel - gear*action/damping)
+    //       = gear * action - damping * vel  ✓
 
     float actuator_torque = m_pending_action * m_gear_ratio;
     m_last_torque = actuator_torque;
@@ -59,24 +72,14 @@ void MotorController::ApplyPassiveForces(JPH::BodyInterface& body_interface) {
         auto* hinge = static_cast<JPH::HingeConstraint*>(m_constraint);
 
         if (m_stiffness > 1e-6f) {
-            // Offset target angle to inject actuator torque through the spring
+            // Position motor: offset target angle to inject actuator torque
             float target = actuator_torque / m_stiffness;
             hinge->SetTargetAngle(target);
         } else {
-            // No stiffness — use velocity motor for actuation + damping
-            auto& ms = hinge->GetMotorSettings();
-            float total = actuator_torque - m_damping * GetVelocity();
-            if (std::abs(total) < 1e-8f) {
-                hinge->SetMotorState(JPH::EMotorState::Off);
-            } else {
-                ms.mSpringSettings.mMode = JPH::ESpringMode::StiffnessAndDamping;
-                ms.mSpringSettings.mStiffness = 0;
-                ms.mSpringSettings.mDamping = 0;
-                ms.mMaxTorqueLimit = std::abs(total);
-                ms.mMinTorqueLimit = -std::abs(total);
-                hinge->SetMotorState(JPH::EMotorState::Velocity);
-                hinge->SetTargetAngularVelocity(total > 0 ? 1000.0f : -1000.0f);
-            }
+            // Velocity motor: set target velocity to inject actuator torque
+            float eff_damping = std::max(m_damping, 0.1f);
+            float target_vel = actuator_torque / eff_damping;
+            hinge->SetTargetAngularVelocity(target_vel);
         }
     }
 }

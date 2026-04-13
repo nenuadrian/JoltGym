@@ -62,7 +62,7 @@ public:
 
         for (int i = 0; i < m_frame_skip; i++) {
             m_articulation->ApplyActions(actions.data(), m_act_dim);
-            m_world.Step(m_dt, 1);
+            m_world.Step(m_dt, m_collision_steps);
         }
 
         float x_after = m_state->GetRootX();
@@ -160,6 +160,46 @@ public:
     int get_action_dim() const { return m_act_dim; }
     int get_episode_length() const { return m_episode_length; }
 
+    // Return world positions of all non-intermediate bodies as (N, 3) array
+    py::array_t<float> get_body_positions() const {
+        auto& body_interface = m_world.GetPhysicsSystem().GetBodyInterface();
+        auto& bodies = m_articulation->GetBodies();
+        auto& names = m_articulation->GetBodyNames();
+
+        // Count non-intermediate bodies
+        std::vector<int> real_indices;
+        for (int i = 0; i < (int)names.size(); i++) {
+            if (names[i].find("_inter") == std::string::npos) {
+                real_indices.push_back(i);
+            }
+        }
+
+        int n = (int)real_indices.size();
+        auto result = py::array_t<float>({n, 3});
+        auto buf = result.mutable_unchecked<2>();
+
+        for (int i = 0; i < n; i++) {
+            auto pos = body_interface.GetPosition(bodies[real_indices[i]]);
+            buf(i, 0) = (float)pos.GetX();
+            buf(i, 1) = (float)pos.GetY();
+            buf(i, 2) = (float)pos.GetZ();
+        }
+
+        return result;
+    }
+
+    // Return body names (non-intermediate only)
+    std::vector<std::string> get_body_names() const {
+        auto& names = m_articulation->GetBodyNames();
+        std::vector<std::string> result;
+        for (auto& name : names) {
+            if (name.find("_inter") == std::string::npos) {
+                result.push_back(name);
+            }
+        }
+        return result;
+    }
+
     void shutdown() {
         // Cleanup
     }
@@ -172,6 +212,7 @@ private:
 
     float m_dt = 0.003f;
     int m_frame_skip = 5;
+    int m_collision_steps = 4;  // More substeps for stable 3D contacts
     float m_forward_reward_weight;
     float m_ctrl_cost_weight;
     float m_healthy_reward;
@@ -213,5 +254,7 @@ void bind_humanoid(py::module_& m) {
         .def("get_obs_dim", &joltgym::HumanoidCore::get_obs_dim)
         .def("get_action_dim", &joltgym::HumanoidCore::get_action_dim)
         .def("get_episode_length", &joltgym::HumanoidCore::get_episode_length)
+        .def("get_body_positions", &joltgym::HumanoidCore::get_body_positions)
+        .def("get_body_names", &joltgym::HumanoidCore::get_body_names)
         .def("shutdown", &joltgym::HumanoidCore::shutdown);
 }

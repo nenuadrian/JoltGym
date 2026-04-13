@@ -61,6 +61,7 @@ public:
     const std::string& GetName() const { return m_name; }
     JPH::BodyID GetRootBody() const { return m_root_body; }
     const std::vector<JPH::BodyID>& GetBodies() const { return m_bodies; }
+    const std::vector<std::string>& GetBodyNames() const { return m_body_names; }
     const std::vector<std::unique_ptr<MotorController>>& GetMotors() const { return m_motors; }
     MotorController* GetMotor(size_t index) { return m_motors[index].get(); }
 

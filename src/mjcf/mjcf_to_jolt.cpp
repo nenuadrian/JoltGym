@@ -127,7 +127,7 @@ JPH::BodyID MjcfToJolt::CreateIntermediateBody(JPH::RVec3 world_pos, JPH::Quat w
                                                   const std::string& name) {
     auto& body_interface = world.GetBodyInterface();
 
-    // Tiny sphere — just a kinematic connector
+    // Tiny sphere — kinematic connector for multi-joint decomposition
     auto shape = JPH::ShapeRefC(new JPH::SphereShape(0.005f));
 
     JPH::BodyCreationSettings settings(
@@ -135,11 +135,13 @@ JPH::BodyID MjcfToJolt::CreateIntermediateBody(JPH::RVec3 world_pos, JPH::Quat w
         JPH::EMotionType::Dynamic, Layers::DYNAMIC);
     settings.mAllowSleeping = false;
     settings.mLinearDamping = 0.0f;
-    settings.mAngularDamping = 0.0f;
+    settings.mAngularDamping = 0.5f; // Mild damping to prevent oscillation
+    settings.mFriction = 0.0f;
+    settings.mRestitution = 0.0f;
 
-    // Override mass to be very small
+    // Small mass — enough for stable constraint solving, not enough to affect dynamics
     settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
-    settings.mMassPropertiesOverride.mMass = 0.001f;
+    settings.mMassPropertiesOverride.mMass = 0.05f;
 
     auto body_id = body_interface.CreateAndAddBody(settings, JPH::EActivation::Activate);
     world.GetRegistry().RegisterBody(name, body_id);
@@ -192,6 +194,14 @@ void MjcfToJolt::BuildBody(const MjcfBody& mjcf_body,
     body_settings.mAllowSleeping = false; // RL bodies should never sleep
     body_settings.mLinearDamping = 0.0f;
     body_settings.mAngularDamping = 0.0f; // We handle damping ourselves
+
+    // Set friction from MJCF geom (Jolt defaults to 0.2 which is too low)
+    if (!mjcf_body.geoms.empty()) {
+        body_settings.mFriction = mjcf_body.geoms[0].friction;
+    } else {
+        body_settings.mFriction = 0.8f; // Sensible default for RL bodies
+    }
+    body_settings.mRestitution = 0.0f; // No bounce for stable contacts
 
     auto body_id = body_interface.CreateAndAddBody(body_settings, JPH::EActivation::Activate);
     world.GetRegistry().RegisterBody(mjcf_body.name, body_id);

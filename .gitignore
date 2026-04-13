@@ -6,3 +6,5 @@ _deps/**
 .pytest_cache/**
 build/**
 **/__pycache__/**
+.DS_Store
+**/.DS_Store
