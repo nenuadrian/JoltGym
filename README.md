@@ -2,7 +2,7 @@
 
 A MuJoCo-compatible physics simulation engine for reinforcement learning, built on [Jolt Physics](https://github.com/jrouwe/JoltPhysics) with Vulkan rendering and Python (Gymnasium) bindings.
 
-This is work in progress, and might not be fully usable right now. Contributions or ideas are appreciated if the project is of interest!
+This is work in progress, and might not be fully usable right now. Contributions or ideas are appreciated if the project is of interest.
 
 ## Features
 
