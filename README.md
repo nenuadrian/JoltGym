@@ -1,5 +1,8 @@
 # JoltGym
 
+[![Deploy Docs](https://github.com/nenuadrian/JoltGym/actions/workflows/docs.yml/badge.svg)](https://github.com/nenuadrian/JoltGym/actions/workflows/docs.yml) [![C++ Build & Tests](https://github.com/nenuadrian/JoltGym/actions/workflows/cpp-build.yml/badge.svg)](https://github.com/nenuadrian/JoltGym/actions/workflows/cpp-build.yml)
+ [![Python Tests](https://github.com/nenuadrian/JoltGym/actions/workflows/python-tests.yml/badge.svg)](https://github.com/nenuadrian/JoltGym/actions/workflows/python-tests.yml)
+ 
 A MuJoCo-compatible physics simulation engine for reinforcement learning, built on [Jolt Physics](https://github.com/jrouwe/JoltPhysics) with Vulkan rendering and Python (Gymnasium) bindings.
 
 This is work in progress, and might not be fully usable right now. Contributions or ideas are appreciated if the project is of interest.
