@@ -18,5 +18,5 @@ cmake.args = ["-DJOLTGYM_BUILD_PYTHON=ON", "-DJOLTGYM_BUILD_TESTS=OFF"]
 wheel.packages = ["python/joltgym"]
 install.components = ["python"]
 
-[tool.scikit-build.cmake.define]
-JOLTGYM_BUILD_RENDERER = "ON"
+# Renderer auto-detected: built when Vulkan SDK + glslc are available.
+# To force: pip install -e . -C cmake.define.JOLTGYM_BUILD_RENDERER=ON

@@ -6,16 +6,29 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Options
-option(JOLTGYM_BUILD_RENDERER "Build Vulkan renderer" ON)
+option(JOLTGYM_BUILD_RENDERER "Build Vulkan renderer (requires Vulkan SDK + glslc)" ON)
 option(JOLTGYM_BUILD_PYTHON   "Build Python bindings" ON)
 option(JOLTGYM_BUILD_TESTS    "Build C++ tests" OFF)
+
+# Auto-detect Vulkan renderer dependencies
+if(JOLTGYM_BUILD_RENDERER)
+    find_package(Vulkan QUIET)
+    find_program(GLSLC glslc HINTS $ENV{VULKAN_SDK}/bin)
+    if(NOT Vulkan_FOUND OR NOT GLSLC)
+        if(NOT Vulkan_FOUND)
+            message(STATUS "Vulkan not found — building without renderer (headless only)")
+        else()
+            message(STATUS "glslc not found — building without renderer (headless only)")
+        endif()
+        set(JOLTGYM_BUILD_RENDERER OFF CACHE BOOL "" FORCE)
+    endif()
+endif()
 
 # Dependencies via FetchContent
 include(cmake/FetchJolt.cmake)
 include(cmake/FetchTinyXML2.cmake)
 
 if(JOLTGYM_BUILD_RENDERER)
-    find_package(Vulkan REQUIRED)
     include(cmake/FetchSDL2.cmake)
     include(cmake/FetchImGui.cmake)
     include(cmake/FetchVkBootstrap.cmake)

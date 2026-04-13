@@ -6,6 +6,7 @@ JoltGym ships with several example scripts in the `examples/` directory covering
 
 | Script | Description |
 |---|---|
+| [`benchmark.py`](benchmark.md) | **Unified benchmark**: train + record + throughput for any env |
 | [`demo_halfcheetah.py`](#basic-demo) | Random-action HalfCheetah demo |
 | [`demo_vectorized.py`](#vectorized-benchmark) | WorldPool throughput benchmark |
 | [`train_ppo.py`](training.md#halfcheetah-training) | Train HalfCheetah with PPO |

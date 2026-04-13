@@ -1,8 +1,5 @@
-find_program(GLSLC glslc HINTS $ENV{VULKAN_SDK}/bin)
-
-if(NOT GLSLC)
-    message(FATAL_ERROR "glslc not found. Install the Vulkan SDK.")
-endif()
+# GLSLC is already found and validated by the root CMakeLists.txt
+# before JOLTGYM_BUILD_RENDERER is enabled.
 
 set(SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(SPIRV_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})

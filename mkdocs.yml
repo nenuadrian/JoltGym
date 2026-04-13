@@ -52,20 +52,6 @@ plugins:
             merge_init_into_class: true
             show_signature_annotations: true
 
-  - mkdoxy:
-      projects:
-        joltgym-cpp:
-          src-dirs: src/
-          full-doc: true
-          doxy-cfg:
-            FILE_PATTERNS: "*.h"
-            RECURSIVE: YES
-            EXTRACT_ALL: YES
-            GENERATE_XML: YES
-            GENERATE_HTML: NO
-            GENERATE_LATEX: NO
-            QUIET: YES
-            WARN_IF_UNDOCUMENTED: NO
 
 markdown_extensions:
   - admonition
@@ -105,6 +91,7 @@ nav:
       - Python Bindings: cpp/bindings.md
   - Demos & Examples:
       - Overview: demos/index.md
+      - Unified Benchmark: demos/benchmark.md
       - Training: demos/training.md
       - Recording & Visualization: demos/recording.md
   - Performance: performance.md

@@ -6,12 +6,22 @@ FetchContent_Declare(
     GIT_TAG        v1.91.8-docking
 )
 
+# ImGui ships no CMakeLists.txt, so we must use FetchContent_Populate
+# to get the source without calling add_subdirectory.
+# Suppress the CMP0169 deprecation warning on CMake >= 3.30.
+if(POLICY CMP0169)
+    cmake_policy(PUSH)
+    cmake_policy(SET CMP0169 OLD)
+endif()
 FetchContent_GetProperties(imgui)
 if(NOT imgui_POPULATED)
     FetchContent_Populate(imgui)
 endif()
+if(POLICY CMP0169)
+    cmake_policy(POP)
+endif()
 
-# ImGui doesn't have a CMakeLists.txt, so we build it as a library
+# Build ImGui as a static library from fetched sources
 add_library(imgui STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
