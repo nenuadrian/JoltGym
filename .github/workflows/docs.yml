@@ -7,6 +7,8 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'src/**/*.h'
+      - 'python/**/*.py'
   workflow_dispatch:
 
 permissions:
@@ -28,8 +30,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install MkDocs Material
-        run: pip install mkdocs-material
+      - name: Install Doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen
+
+      - name: Install MkDocs and plugins
+        run: pip install mkdocs-material mkdocstrings[python] mkdoxy
 
       - name: Build docs
         run: mkdocs build

@@ -34,6 +34,39 @@ theme:
   icon:
     repo: fontawesome/brands/github
 
+plugins:
+  - search
+
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [python]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            heading_level: 3
+            members_order: source
+            docstring_style: google
+            merge_init_into_class: true
+            show_signature_annotations: true
+
+  - mkdoxy:
+      projects:
+        joltgym-cpp:
+          src-dirs: src/
+          full-doc: true
+          doxy-cfg:
+            FILE_PATTERNS: "*.h"
+            RECURSIVE: YES
+            EXTRACT_ALL: YES
+            GENERATE_XML: YES
+            GENERATE_HTML: NO
+            GENERATE_LATEX: NO
+            QUIET: YES
+            WARN_IF_UNDOCUMENTED: NO
+
 markdown_extensions:
   - admonition
   - pymdownx.details

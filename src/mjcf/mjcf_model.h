@@ -1,3 +1,5 @@
+/// @file mjcf_model.h
+/// @brief Data structures representing a parsed MuJoCo XML (MJCF) model.
 #pragma once
 
 #include <string>
@@ -8,6 +10,7 @@
 
 namespace joltgym {
 
+/// @brief 3D float vector with basic operations.
 struct Vec3f {
     float x = 0, y = 0, z = 0;
     Vec3f() = default;
@@ -23,82 +26,95 @@ struct Vec3f {
     }
 };
 
+/// @brief 4D float vector (quaternion or RGBA color).
 struct Vec4f {
     float x = 0, y = 0, z = 0, w = 1;
 };
 
+/// @brief A collision/visual geometry element parsed from `<geom>`.
+///
+/// Supported types: capsule, sphere, box, cylinder, plane.
 struct MjcfGeom {
-    std::string name;
-    std::string type = "capsule"; // capsule, sphere, box, cylinder, plane
-    Vec3f pos;
-    std::array<float, 4> axisangle = {0, 0, 1, 0}; // axis-angle rotation
-    std::optional<std::array<float, 6>> fromto; // fromto="x1 y1 z1 x2 y2 z2"
-    std::vector<float> size; // varies by type
-    Vec4f rgba = {0.8f, 0.6f, 0.4f, 1.0f};
-    int condim = 3;
-    float friction = 0.4f;
-    std::string material;
-    std::string geom_class; // default class
-    int group = 0;
+    std::string name;                                      ///< Geom name.
+    std::string type = "capsule";                          ///< Geometry type.
+    Vec3f pos;                                             ///< Local position.
+    std::array<float, 4> axisangle = {0, 0, 1, 0};        ///< Axis-angle rotation.
+    std::optional<std::array<float, 6>> fromto;            ///< Alternative `fromto` specification.
+    std::vector<float> size;                               ///< Size parameters (varies by type).
+    Vec4f rgba = {0.8f, 0.6f, 0.4f, 1.0f};                ///< Color.
+    int condim = 3;                                        ///< Contact dimensionality.
+    float friction = 0.4f;                                 ///< Friction coefficient.
+    std::string material;                                  ///< Material name.
+    std::string geom_class;                                ///< Default class name.
+    int group = 0;                                         ///< Geom group.
 };
 
+/// @brief A joint element parsed from `<joint>`.
+///
+/// Supported types: hinge (revolute), slide (prismatic), ball, free.
 struct MjcfJoint {
-    std::string name;
-    std::string type = "hinge"; // hinge, slide, ball, free
-    Vec3f pos;
-    Vec3f axis = {0, 0, 1};
-    float range_min = 0;
-    float range_max = 0;
-    bool limited = true;
-    float damping = 0.0f;   // MuJoCo default: 0
-    float stiffness = 0.0f; // MuJoCo default: 0
-    float armature = 0.0f;  // MuJoCo default: 0
-    std::string joint_class;
+    std::string name;                     ///< Joint name.
+    std::string type = "hinge";           ///< Joint type.
+    Vec3f pos;                            ///< Anchor position.
+    Vec3f axis = {0, 0, 1};              ///< Rotation/translation axis.
+    float range_min = 0;                  ///< Lower joint limit.
+    float range_max = 0;                  ///< Upper joint limit.
+    bool limited = true;                  ///< Whether joint limits are enforced.
+    float damping = 0.0f;                ///< Passive damping coefficient.
+    float stiffness = 0.0f;              ///< Passive stiffness coefficient.
+    float armature = 0.0f;               ///< Rotor inertia.
+    std::string joint_class;              ///< Default class name.
 };
 
+/// @brief A body element parsed from `<body>`, forming a tree hierarchy.
 struct MjcfBody {
-    std::string name;
-    Vec3f pos;
-    Vec4f quat = {0, 0, 0, 1}; // x, y, z, w — Jolt convention (identity = 0,0,0,1)
-    bool has_quat = false;
-    std::string childclass;
-    std::vector<MjcfGeom> geoms;
-    std::vector<MjcfJoint> joints;
-    std::vector<MjcfBody> children;
+    std::string name;                      ///< Body name.
+    Vec3f pos;                             ///< Position relative to parent.
+    Vec4f quat = {0, 0, 0, 1};            ///< Orientation (x, y, z, w).
+    bool has_quat = false;                 ///< Whether a quaternion was explicitly set.
+    std::string childclass;                ///< Default class for children.
+    std::vector<MjcfGeom> geoms;           ///< Collision/visual geometries.
+    std::vector<MjcfJoint> joints;         ///< Joint definitions.
+    std::vector<MjcfBody> children;        ///< Child bodies.
 };
 
+/// @brief An actuator element parsed from `<actuator><motor>`.
 struct MjcfActuator {
-    std::string name;
-    std::string joint; // joint name this actuator acts on
-    float gear = 1.0f;
-    float ctrl_min = -1.0f;
-    float ctrl_max = 1.0f;
-    bool ctrllimited = true;
+    std::string name;                      ///< Actuator name.
+    std::string joint;                     ///< Name of the joint this actuator drives.
+    float gear = 1.0f;                     ///< Gear ratio (torque multiplier).
+    float ctrl_min = -1.0f;               ///< Minimum control input.
+    float ctrl_max = 1.0f;                ///< Maximum control input.
+    bool ctrllimited = true;               ///< Whether control limits are enforced.
 };
 
+/// @brief Compiler directives parsed from `<compiler>`.
 struct MjcfCompiler {
-    std::string angle = "degree"; // "degree" or "radian"
-    std::string coordinate = "global"; // "global" or "local"
-    bool inertiafromgeom = false;
-    float settotalmass = -1.0f; // -1 means unset
+    std::string angle = "degree";          ///< Angle units: "degree" or "radian".
+    std::string coordinate = "global";     ///< Coordinate frame: "global" or "local".
+    bool inertiafromgeom = false;           ///< Compute inertia from geom shapes.
+    float settotalmass = -1.0f;            ///< Override total mass (-1 = unset).
 
+    /// @brief Convert a value to radians based on the configured angle unit.
     float ToRadians(float val) const {
         if (angle == "degree") return val * (float)M_PI / 180.0f;
         return val;
     }
 };
 
+/// @brief Simulation options parsed from `<option>`.
 struct MjcfOption {
-    Vec3f gravity = {0, 0, -9.81f};
-    float timestep = 0.002f;
+    Vec3f gravity = {0, 0, -9.81f};        ///< Gravity vector (m/s^2).
+    float timestep = 0.002f;               ///< Default simulation timestep (seconds).
 };
 
+/// @brief Top-level parsed representation of a MuJoCo XML model.
 struct MjcfModel {
-    std::string name;
-    MjcfCompiler compiler;
-    MjcfOption option;
-    MjcfBody worldbody; // root of body tree
-    std::vector<MjcfActuator> actuators;
+    std::string name;                      ///< Model name.
+    MjcfCompiler compiler;                 ///< Compiler directives.
+    MjcfOption option;                     ///< Simulation options.
+    MjcfBody worldbody;                    ///< Root of the body tree.
+    std::vector<MjcfActuator> actuators;   ///< Motor definitions.
 };
 
 } // namespace joltgym

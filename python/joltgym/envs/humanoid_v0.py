@@ -1,8 +1,4 @@
-"""Humanoid-v0 environment using JoltGym physics engine.
-
-3D humanoid locomotion with 17 actuated joints and a free (6DOF) root body.
-Observation is qpos[2:] ++ qvel (skip root x,y position).
-"""
+"""Humanoid-v0 environment using JoltGym physics engine."""
 
 import os
 import numpy as np
@@ -15,14 +11,41 @@ def _asset_path(name: str) -> str:
 
 
 class HumanoidEnv(gym.Env):
-    """Humanoid environment powered by Jolt Physics.
+    """3D bipedal humanoid locomotion environment powered by Jolt Physics.
 
-    Observation Space: Box(-inf, inf, (45,))
-        qpos[2:]: root_z(1), quat(4), joints(17) = 22
-        qvel: linear(3), angular(3), joints(17) = 23
-        Total: 45
+    A humanoid with 17 actuated joints (abdomen, hips, knees, shoulders,
+    elbows) and a free 6DOF root body. The goal is to walk forward while
+    staying upright.
 
-    Action Space: Box(-0.4, 0.4, (17,)) — normalized joint torques
+    Observation:
+        `Box(-inf, inf, (45,))` — `qpos[2:]` (skip root X, Y) concatenated
+        with `qvel`.
+
+        | Index  | Dim | Content |
+        |--------|-----|---------|
+        | 0      | 1   | root Z position (height) |
+        | 1–4    | 4   | root quaternion (w, x, y, z) |
+        | 5–21   | 17  | joint angles |
+        | 22–24  | 3   | root linear velocity (x, y, z) |
+        | 25–27  | 3   | root angular velocity (x, y, z) |
+        | 28–44  | 17  | joint velocities |
+
+    Action:
+        `Box(-0.4, 0.4, (17,))` — normalized joint torques for 17 actuated
+        joints: abdomen (3), right hip (3) + knee, left hip (3) + knee,
+        right shoulder (2) + elbow, left shoulder (2) + elbow.
+
+    Reward:
+        `forward_reward_weight * x_velocity + healthy_reward * is_healthy
+        - ctrl_cost_weight * sum(action²)`
+
+    Termination:
+        Episode ends when root Z position is outside
+        `[healthy_z_min, healthy_z_max]`.
+
+    Attributes:
+        observation_space: Gymnasium Box space of shape `(45,)`.
+        action_space: Gymnasium Box space of shape `(17,)`.
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 67}
@@ -34,6 +57,17 @@ class HumanoidEnv(gym.Env):
                  healthy_z_min=1.0,
                  healthy_z_max=2.0,
                  reset_noise_scale=0.005):
+        """Initialize the Humanoid environment.
+
+        Args:
+            render_mode: Rendering mode — `"human"`, `"rgb_array"`, or `None`.
+            forward_reward_weight: Multiplier on the forward velocity reward.
+            ctrl_cost_weight: Multiplier on the control cost penalty.
+            healthy_reward: Bonus reward for staying upright each step.
+            healthy_z_min: Minimum root Z height to be considered healthy.
+            healthy_z_max: Maximum root Z height to be considered healthy.
+            reset_noise_scale: Standard deviation of noise added on reset.
+        """
         super().__init__()
 
         from joltgym import joltgym_native
@@ -60,6 +94,19 @@ class HumanoidEnv(gym.Env):
         )
 
     def step(self, action):
+        """Run one timestep (frame_skip=5 physics steps at dt=0.003s).
+
+        Args:
+            action: Normalized joint torques, shape `(17,)`, range `[-0.4, 0.4]`.
+
+        Returns:
+            obs: Observation array of shape `(45,)`.
+            reward: Scalar reward.
+            terminated: `True` when root Z leaves `[healthy_z_min, healthy_z_max]`.
+            truncated: Always `False`.
+            info: Dict with keys `x_position`, `z_position`, `x_velocity`,
+                `reward_forward`, `reward_ctrl`.
+        """
         action = np.asarray(action, dtype=np.float32)
         obs, reward, terminated, truncated = self._core.step(action)
 
@@ -74,6 +121,16 @@ class HumanoidEnv(gym.Env):
         return np.asarray(obs), float(reward), bool(terminated), bool(truncated), info
 
     def reset(self, *, seed=None, options=None):
+        """Reset the environment to the initial state with optional noise.
+
+        Args:
+            seed: Random seed for reproducible resets.
+            options: Unused, present for Gymnasium compatibility.
+
+        Returns:
+            obs: Initial observation array of shape `(45,)`.
+            info: Empty dict.
+        """
         super().reset(seed=seed)
 
         if seed is not None:
@@ -85,7 +142,9 @@ class HumanoidEnv(gym.Env):
         return np.asarray(obs), info
 
     def render(self):
+        """Render the environment (not yet implemented)."""
         pass  # TODO: Integrate Vulkan renderer
 
     def close(self):
+        """Shut down the underlying C++ physics engine."""
         self._core.shutdown()
