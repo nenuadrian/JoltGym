@@ -82,7 +82,6 @@ Articulation* MjcfToJolt::Build(const MjcfModel& model, PhysicsWorld& world,
 
             // Find the joint to get damping/stiffness/armature
             float damping = 0, stiffness = 0, armature = 0;
-            // Search the body tree for the joint
             std::function<bool(const MjcfBody&)> findJoint = [&](const MjcfBody& body) -> bool {
                 for (auto& j : body.joints) {
                     if (j.name == act.joint) {
@@ -123,6 +122,33 @@ Articulation* MjcfToJolt::Build(const MjcfModel& model, PhysicsWorld& world,
     return nullptr;
 }
 
+JPH::BodyID MjcfToJolt::CreateIntermediateBody(JPH::RVec3 world_pos, JPH::Quat world_rot,
+                                                  PhysicsWorld& world, Articulation& articulation,
+                                                  const std::string& name) {
+    auto& body_interface = world.GetBodyInterface();
+
+    // Tiny sphere — just a kinematic connector
+    auto shape = JPH::ShapeRefC(new JPH::SphereShape(0.005f));
+
+    JPH::BodyCreationSettings settings(
+        shape, world_pos, world_rot,
+        JPH::EMotionType::Dynamic, Layers::DYNAMIC);
+    settings.mAllowSleeping = false;
+    settings.mLinearDamping = 0.0f;
+    settings.mAngularDamping = 0.0f;
+
+    // Override mass to be very small
+    settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
+    settings.mMassPropertiesOverride.mMass = 0.001f;
+
+    auto body_id = body_interface.CreateAndAddBody(settings, JPH::EActivation::Activate);
+    world.GetRegistry().RegisterBody(name, body_id);
+    articulation.AddBody(name, body_id);
+    m_dynamic_bodies.push_back(body_id);
+
+    return body_id;
+}
+
 void MjcfToJolt::BuildBody(const MjcfBody& mjcf_body,
                             JPH::BodyID parent_body_id,
                             JPH::RVec3 parent_world_pos,
@@ -135,7 +161,14 @@ void MjcfToJolt::BuildBody(const MjcfBody& mjcf_body,
     // Compute world position for this body
     JPH::Vec3 local_pos = ToJoltVec3(mjcf_body.pos);
     JPH::RVec3 world_pos = parent_world_pos + JPH::RVec3(parent_world_rot * local_pos);
-    JPH::Quat world_rot = parent_world_rot; // Bodies inherit parent rotation in local coords
+
+    // Apply body quaternion if specified
+    JPH::Quat world_rot = parent_world_rot;
+    if (mjcf_body.has_quat) {
+        JPH::Quat body_quat(mjcf_body.quat.x, mjcf_body.quat.y,
+                             mjcf_body.quat.z, mjcf_body.quat.w);
+        world_rot = parent_world_rot * body_quat;
+    }
 
     // Create the shape from geoms
     JPH::ShapeRefC shape;
@@ -168,17 +201,38 @@ void MjcfToJolt::BuildBody(const MjcfBody& mjcf_body,
     if (is_root) {
         articulation.SetRootBody(body_id);
 
-        // Register root DOFs from joints on the root body
+        // Check for free joint first
+        bool has_free_joint = false;
         for (auto& joint : mjcf_body.joints) {
-            if (joint.type == "slide") {
-                if (std::abs(joint.axis.x) > 0.5f) {
-                    articulation.AddRootDOF({joint.name, RootDOF::Type::SlideX});
-                } else if (std::abs(joint.axis.z) > 0.5f) {
-                    articulation.AddRootDOF({joint.name, RootDOF::Type::SlideZ});
-                }
-            } else if (joint.type == "hinge") {
-                if (std::abs(joint.axis.y) > 0.5f) {
-                    articulation.AddRootDOF({joint.name, RootDOF::Type::HingeY});
+            if (joint.type == "free") {
+                has_free_joint = true;
+                break;
+            }
+        }
+
+        if (has_free_joint) {
+            // Free joint: 7 qpos DOFs (x, y, z, qw, qx, qy, qz)
+            articulation.SetHasFreeRoot(true);
+            articulation.AddRootDOF({"free_x", RootDOF::Type::FreeX});
+            articulation.AddRootDOF({"free_y", RootDOF::Type::FreeY});
+            articulation.AddRootDOF({"free_z", RootDOF::Type::FreeZ});
+            articulation.AddRootDOF({"free_qw", RootDOF::Type::QuatW});
+            articulation.AddRootDOF({"free_qx", RootDOF::Type::QuatX});
+            articulation.AddRootDOF({"free_qy", RootDOF::Type::QuatY});
+            articulation.AddRootDOF({"free_qz", RootDOF::Type::QuatZ});
+        } else {
+            // Register individual slide/hinge root DOFs
+            for (auto& joint : mjcf_body.joints) {
+                if (joint.type == "slide") {
+                    if (std::abs(joint.axis.x) > 0.5f) {
+                        articulation.AddRootDOF({joint.name, RootDOF::Type::SlideX});
+                    } else if (std::abs(joint.axis.z) > 0.5f) {
+                        articulation.AddRootDOF({joint.name, RootDOF::Type::SlideZ});
+                    }
+                } else if (joint.type == "hinge") {
+                    if (std::abs(joint.axis.y) > 0.5f) {
+                        articulation.AddRootDOF({joint.name, RootDOF::Type::HingeY});
+                    }
                 }
             }
         }
@@ -186,10 +240,48 @@ void MjcfToJolt::BuildBody(const MjcfBody& mjcf_body,
 
     // Create constraints for non-root joints
     if (!is_root && !parent_body_id.IsInvalid()) {
-        for (auto& joint : mjcf_body.joints) {
-            if (joint.type == "hinge") {
-                CreateHingeConstraint(joint, parent_body_id, body_id,
+        auto& joints = mjcf_body.joints;
+        int num_joints = (int)joints.size();
+
+        if (num_joints == 1 && joints[0].type == "hinge") {
+            // Simple case: single hinge joint
+            CreateHingeConstraint(joints[0], parent_body_id, body_id,
+                                  world_pos, world_rot, world, articulation);
+        } else if (num_joints > 1) {
+            // Multi-joint body: create intermediate bodies
+            // Chain: parent → joint[0] → inter[0] → joint[1] → inter[1] → ... → joint[N-1] → actual_body
+            JPH::BodyID prev_body_id = parent_body_id;
+            for (int ji = 0; ji < num_joints; ji++) {
+                auto& joint = joints[ji];
+                if (joint.type != "hinge") continue;
+
+                JPH::BodyID next_body_id;
+                if (ji < num_joints - 1) {
+                    // Create intermediate body
+                    std::string inter_name = mjcf_body.name + "_inter" + std::to_string(ji);
+                    next_body_id = CreateIntermediateBody(world_pos, world_rot,
+                                                          world, articulation, inter_name);
+                } else {
+                    // Last joint connects to the actual body
+                    next_body_id = body_id;
+                }
+
+                CreateHingeConstraint(joint, prev_body_id, next_body_id,
                                       world_pos, world_rot, world, articulation);
+                prev_body_id = next_body_id;
+            }
+        }
+        // Bodies with 0 joints (like feet) have no constraints — they're just
+        // attached by being children in the body tree. We need a fixed constraint.
+        if (num_joints == 0) {
+            JPH::FixedConstraintSettings fixed_settings;
+            fixed_settings.mAutoDetectPoint = true;
+            auto& no_lock = world.GetPhysicsSystem().GetBodyLockInterfaceNoLock();
+            JPH::Body* parent_body = no_lock.TryGetBody(parent_body_id);
+            JPH::Body* child_body = no_lock.TryGetBody(body_id);
+            if (parent_body && child_body) {
+                auto* constraint = fixed_settings.Create(*parent_body, *child_body);
+                world.GetPhysicsSystem().AddConstraint(constraint);
             }
         }
     }
@@ -209,8 +301,11 @@ void MjcfToJolt::CreateHingeConstraint(const MjcfJoint& joint,
     // Joint position in world space
     JPH::RVec3 joint_world_pos = world_pos + JPH::RVec3(world_rot * ToJoltVec3(joint.pos));
 
-    // Joint axis in world space
-    JPH::Vec3 hinge_axis = (world_rot * ToJoltVec3(joint.axis)).Normalized();
+    // Joint axis in world space — normalize arbitrary axes like "2 1 1"
+    JPH::Vec3 raw_axis = ToJoltVec3(joint.axis);
+    float axis_len = raw_axis.Length();
+    JPH::Vec3 hinge_axis = (axis_len > 1e-6f) ? (world_rot * raw_axis).Normalized()
+                                                : JPH::Vec3(0, 1, 0);
 
     // Compute a perpendicular normal axis
     JPH::Vec3 normal_axis = hinge_axis.GetNormalizedPerpendicular();
@@ -322,6 +417,17 @@ JPH::ShapeRefC MjcfToJolt::CreateBoxShape(const MjcfGeom& geom) {
 JPH::ShapeRefC MjcfToJolt::CreateSphereShape(const MjcfGeom& geom) {
     float radius = 0.05f;
     if (!geom.size.empty()) radius = geom.size[0];
+
+    // Apply position offset if specified
+    if (geom.pos.x != 0 || geom.pos.y != 0 || geom.pos.z != 0) {
+        auto sphere = new JPH::SphereShape(radius);
+        JPH::RotatedTranslatedShapeSettings rts(
+            ToJoltVec3(geom.pos), JPH::Quat::sIdentity(), sphere);
+        auto result = rts.Create();
+        if (!result.HasError()) return result.Get();
+        return sphere;
+    }
+
     return new JPH::SphereShape(radius);
 }
 

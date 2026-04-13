@@ -6,6 +6,7 @@ void bind_world(py::module_& m);
 void bind_renderer(py::module_& m);
 void bind_state(py::module_& m);
 void bind_env(py::module_& m);
+void bind_humanoid(py::module_& m);
 void bind_multi_agent(py::module_& m);
 
 PYBIND11_MODULE(joltgym_native, m) {
@@ -14,6 +15,7 @@ PYBIND11_MODULE(joltgym_native, m) {
     bind_world(m);
     bind_state(m);
     bind_env(m);
+    bind_humanoid(m);
     bind_multi_agent(m);
 
     #ifdef JOLTGYM_HAS_RENDERER

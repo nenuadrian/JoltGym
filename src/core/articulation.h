@@ -10,9 +10,29 @@ namespace joltgym {
 
 // Describes a root DOF that maps to position/rotation of the root body
 struct RootDOF {
-    enum class Type { SlideX, SlideZ, HingeY };
+    enum class Type {
+        SlideX, SlideZ, HingeY,                        // 2D planar (HalfCheetah)
+        FreeX, FreeY, FreeZ,                            // 3D position
+        QuatW, QuatX, QuatY, QuatZ,                     // 3D orientation (quaternion)
+    };
     std::string name;
     Type type;
+
+    // Is this a position DOF (contributes to qpos)?
+    bool IsPositionDOF() const {
+        return type != Type::QuatW; // All except QuatW are directly in qpos
+        // Actually all root DOF types contribute to qpos
+    }
+
+    // How many qpos entries does this DOF add?
+    static int QPosDim(Type t) { return 1; }
+
+    // Is this DOF velocity-only (no qpos counterpart)?
+    // QuatW/X/Y/Z have 4 qpos entries but only 3 qvel entries (angular velocity)
+    static bool IsQuatComponent(Type t) {
+        return t == Type::QuatW || t == Type::QuatX ||
+               t == Type::QuatY || t == Type::QuatZ;
+    }
 };
 
 class Articulation {
@@ -46,8 +66,14 @@ public:
 
     float GetRootX(const JPH::BodyInterface& body_interface) const;
     float GetRootXVelocity(const JPH::BodyInterface& body_interface) const;
+    float GetRootZ(const JPH::BodyInterface& body_interface) const;
+
+    // Does this articulation have a free (6DOF) root?
+    bool HasFreeRoot() const { return m_has_free_root; }
+    void SetHasFreeRoot(bool v) { m_has_free_root = v; }
 
 private:
+    bool m_has_free_root = false;
     std::string m_name;
     JPH::BodyID m_root_body;
     std::vector<std::string> m_body_names;

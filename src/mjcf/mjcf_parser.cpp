@@ -87,6 +87,14 @@ MjcfBody MjcfParser::ParseBody(const tinyxml2::XMLElement* bodyElem,
     if (auto* v = bodyElem->Attribute("name")) body.name = v;
     body.pos = ParseVec3(bodyElem->Attribute("pos"));
 
+    // Parse quaternion orientation (MJCF stores as w,x,y,z — convert to our x,y,z,w)
+    if (auto* v = bodyElem->Attribute("quat")) {
+        float qw, qx, qy, qz;
+        sscanf(v, "%f %f %f %f", &qw, &qx, &qy, &qz);
+        body.quat = {qx, qy, qz, qw}; // Store as x,y,z,w (Jolt convention)
+        body.has_quat = true;
+    }
+
     // Determine active default class
     std::string activeClass = parentClass;
     if (auto* v = bodyElem->Attribute("childclass")) {

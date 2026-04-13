@@ -4,6 +4,7 @@ pybind11_add_module(joltgym_native MODULE
     bind_renderer.cpp
     bind_state.cpp
     bind_env.cpp
+    bind_humanoid.cpp
     world_pool.cpp
     multi_agent_env.cpp
     bind_multi_agent.cpp

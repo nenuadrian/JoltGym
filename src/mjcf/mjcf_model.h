@@ -50,15 +50,17 @@ struct MjcfJoint {
     float range_min = 0;
     float range_max = 0;
     bool limited = true;
-    float damping = 0.01f;
-    float stiffness = 8.0f;
-    float armature = 0.1f;
+    float damping = 0.0f;   // MuJoCo default: 0
+    float stiffness = 0.0f; // MuJoCo default: 0
+    float armature = 0.0f;  // MuJoCo default: 0
     std::string joint_class;
 };
 
 struct MjcfBody {
     std::string name;
     Vec3f pos;
+    Vec4f quat = {0, 0, 0, 1}; // x, y, z, w — Jolt convention (identity = 0,0,0,1)
+    bool has_quat = false;
     std::string childclass;
     std::vector<MjcfGeom> geoms;
     std::vector<MjcfJoint> joints;

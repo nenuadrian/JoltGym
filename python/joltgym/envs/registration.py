@@ -17,6 +17,11 @@ def register_envs():
         max_episode_steps=1000,
     )
     gym.register(
+        id="JoltGym/Humanoid-v0",
+        entry_point="joltgym.envs.humanoid_v0:HumanoidEnv",
+        max_episode_steps=1000,
+    )
+    gym.register(
         id="JoltGym/CheetahRace-v0",
         entry_point="joltgym.envs.cheetah_race_v0:CheetahRaceEnv",
         max_episode_steps=1000,

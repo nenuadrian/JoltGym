@@ -3,15 +3,16 @@
 
 namespace joltgym {
 
-StateExtractor::StateExtractor(Articulation* articulation, PhysicsWorld* world)
+StateExtractor::StateExtractor(Articulation* articulation, PhysicsWorld* world, int qpos_skip)
     : m_articulation(articulation)
     , m_world(world)
+    , m_qpos_skip(qpos_skip)
 {
 }
 
 int StateExtractor::GetObsDim() const {
-    // qpos excluding rootx (first element) + qvel
-    return (m_articulation->GetQPosDim() - 1) + m_articulation->GetQVelDim();
+    // qpos excluding first `m_qpos_skip` elements + qvel
+    return (m_articulation->GetQPosDim() - m_qpos_skip) + m_articulation->GetQVelDim();
 }
 
 void StateExtractor::ExtractObs(float* out) const {
@@ -26,9 +27,9 @@ void StateExtractor::ExtractObs(float* out) const {
     m_articulation->GetQPos(qpos.data(), body_interface);
     m_articulation->GetQVel(qvel.data(), body_interface);
 
-    // obs = qpos[1:] ++ qvel (skip rootx which is qpos[0])
+    // obs = qpos[skip:] ++ qvel
     int idx = 0;
-    for (int i = 1; i < qpos_dim; i++) {
+    for (int i = m_qpos_skip; i < qpos_dim; i++) {
         out[idx++] = qpos[i];
     }
     for (int i = 0; i < qvel_dim; i++) {
@@ -54,6 +55,11 @@ float StateExtractor::GetRootX() const {
 float StateExtractor::GetRootXVelocity() const {
     auto& body_interface = m_world->GetPhysicsSystem().GetBodyInterface();
     return m_articulation->GetRootXVelocity(body_interface);
+}
+
+float StateExtractor::GetRootZ() const {
+    auto& body_interface = m_world->GetPhysicsSystem().GetBodyInterface();
+    return m_articulation->GetRootZ(body_interface);
 }
 
 } // namespace joltgym

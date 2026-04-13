@@ -41,6 +41,11 @@ private:
                                JPH::RVec3 world_pos, JPH::Quat world_rot,
                                PhysicsWorld& world, Articulation& articulation);
 
+    // Create intermediate bodies for multi-joint decomposition
+    JPH::BodyID CreateIntermediateBody(JPH::RVec3 world_pos, JPH::Quat world_rot,
+                                        PhysicsWorld& world, Articulation& articulation,
+                                        const std::string& name);
+
     // Mass scaling
     void ApplyTotalMassScaling(PhysicsWorld& world, float target_mass);
 
